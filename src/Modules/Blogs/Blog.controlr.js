@@ -19,7 +19,7 @@ export const addBlog = async (req, res) => {
       return res.status(400).json({ message: "Sections should be an array" });
     }
 
-    console.log("📌 Parsed Sections:", sections);
+ 
 
     // ✅ Handle image uploads
     let uploadedImages = [];
@@ -29,12 +29,12 @@ export const addBlog = async (req, res) => {
         ? req.files.images
         : [req.files.images];
 
-      console.log("📌 Received Image Files:", imageFiles);
+     
 
       uploadedImages = await Promise.all(
         imageFiles.map(async (file) => {
           const uploadResponse = await uploadOnCloudinary(file.path);
-          console.log("📌 Uploaded to Cloudinary:", uploadResponse);
+         
           return uploadResponse.secure_url;
         })
       );

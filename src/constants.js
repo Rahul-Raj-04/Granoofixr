@@ -1,1 +1,1 @@
-export const DB_NAME = "ecommercebackend";
+export const DB_NAME = "Granoopixr";
