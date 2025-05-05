@@ -3,16 +3,16 @@ import mongoose from "mongoose";
 const blogSchema = new mongoose.Schema({
   metaTitle: {
     type: String,
-   
+
     trim: true,
   },
   metaDescription: {
     type: String,
-    
+
     trim: true,
   },
   metakeywords: {
-    type: [String], 
+    type: [String],
     default: [],
   },
 
@@ -26,6 +26,11 @@ const blogSchema = new mongoose.Schema({
       content: { type: mongoose.Schema.Types.Mixed, required: true },
     },
   ],
+  link: {
+    type: String,
+    trim: true, // Optional: To ensure extra spaces are removed
+    default: "", // Optional: Default value (empty string)
+  },
   createdAt: { type: Date, default: Date.now },
 });
 

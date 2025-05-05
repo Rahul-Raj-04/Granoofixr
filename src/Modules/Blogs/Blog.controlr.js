@@ -3,7 +3,7 @@ import { Blog } from "./Blog.modal.js";
 
 export const addBlog = async (req, res) => {
   try {
-    let { sections, metaTitle, metaDescription, metaTags } = req.body;
+    let { sections, metaTitle, metaDescription, link } = req.body;
 
     // ✅ Parse sections if sent as JSON string (common in multipart/form-data)
     if (typeof sections === "string") {
@@ -19,8 +19,6 @@ export const addBlog = async (req, res) => {
       return res.status(400).json({ message: "Sections should be an array" });
     }
 
- 
-
     // ✅ Handle image uploads
     let uploadedImages = [];
 
@@ -29,12 +27,10 @@ export const addBlog = async (req, res) => {
         ? req.files.images
         : [req.files.images];
 
-     
-
       uploadedImages = await Promise.all(
         imageFiles.map(async (file) => {
           const uploadResponse = await uploadOnCloudinary(file.path);
-         
+
           return uploadResponse.secure_url;
         })
       );
@@ -57,8 +53,6 @@ export const addBlog = async (req, res) => {
       return section;
     });
 
-    
-
     // ✅ Build blogData object
     const blogData = {
       sections,
@@ -76,29 +70,109 @@ export const addBlog = async (req, res) => {
           : [req.body.metakeywords];
       }
     }
-    
+    if (link) blogData.link = link;
 
     // ✅ Save to DB
     const newBlog = await Blog.create(blogData);
-
-   
 
     res.status(201).json({
       message: "Blog added successfully",
       blog: newBlog,
     });
   } catch (error) {
-   
     res.status(500).json({ message: "Internal Server Error" });
   }
 };
 export const getAllBlogs = async (req, res) => {
   try {
-    const blogs = await Blog.find();
+    const blogs = await Blog.find().sort({ createdAt: -1 }); // Sort by newest first
     res.status(200).json({ success: true, blogs });
   } catch (error) {
     console.error("❌ Error fetching blogs:", error);
     res.status(500).json({ success: false, message: "Internal Server Error" });
+  }
+};
+export const editBlog = async (req, res) => {
+  try {
+    const { id } = req.query;
+    let {
+      sectionIndex,
+      sectionData,
+      metaTitle,
+      metaDescription,
+      metakeywords,
+    } = req.body;
+
+    // ✅ Validate required fields
+    if (sectionIndex === undefined || sectionData === undefined) {
+      return res
+        .status(400)
+        .json({ message: "sectionIndex and sectionData are required" });
+    }
+
+    // ✅ Parse sectionData if it's sent as a string
+    if (typeof sectionData === "string") {
+      try {
+        sectionData = JSON.parse(sectionData);
+      } catch (err) {
+        return res.status(400).json({ message: "Invalid JSON in sectionData" });
+      }
+    }
+
+    // ✅ Handle image upload (if needed)
+    if (sectionData.type === "image" && req.files?.images) {
+      const imageFiles = Array.isArray(req.files.images)
+        ? req.files.images
+        : [req.files.images];
+
+      const uploadedImages = await Promise.all(
+        imageFiles.map(async (file) => {
+          const uploadResponse = await uploadOnCloudinary(file.path);
+          return uploadResponse.secure_url;
+        })
+      );
+
+      sectionData.content = Array.isArray(sectionData.content)
+        ? uploadedImages
+        : uploadedImages[0];
+    }
+
+    // ✅ Fetch existing blog
+    const blog = await Blog.findById(id);
+    if (!blog) {
+      return res.status(404).json({ message: "Blog not found" });
+    }
+
+    // ✅ Update specific section
+    if (!Array.isArray(blog.sections) || sectionIndex >= blog.sections.length) {
+      return res.status(400).json({ message: "Invalid section index" });
+    }
+
+    blog.sections[sectionIndex] = sectionData;
+
+    // ✅ Update meta fields if present
+    if (metaTitle) blog.metaTitle = metaTitle;
+    if (metaDescription) blog.metaDescription = metaDescription;
+
+    if (metakeywords) {
+      try {
+        blog.metakeywords = JSON.parse(metakeywords);
+      } catch (err) {
+        blog.metakeywords = Array.isArray(metakeywords)
+          ? metakeywords
+          : [metakeywords];
+      }
+    }
+
+    await blog.save();
+
+    res.status(200).json({
+      message: "Blog section updated successfully",
+      blog,
+    });
+  } catch (error) {
+    console.error("❌ Error updating blog section:", error);
+    res.status(500).json({ message: "Internal Server Error" });
   }
 };
 
